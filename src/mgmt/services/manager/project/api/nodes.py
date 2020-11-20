@@ -20,7 +20,6 @@ from project import db
 from .models import Zgc
 # from .....operator.obj.droplet import Droplet
 from kubernetes import client, config
-from 
 
 # from .....operator.operators.droplets_operator import DropletOperator
 # from .....operator.operators.fwds_operator import FwdOperator
