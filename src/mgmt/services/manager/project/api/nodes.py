@@ -25,7 +25,7 @@ from kubernetes import client, config
 # from .....operator.operators.fwds_operator import FwdOperator
 # from .....operator.operators.dfts_operator import DftOperator 
 
-from .....operator.common.constants import KIND
+# from .....operator.common.constants import KIND
 from .vpcs import getGWsFromIpRange
 logger = logging.getLogger()
 config.load_incluster_config()
