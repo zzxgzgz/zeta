@@ -32,13 +32,15 @@ logger = logging.getLogger()
 
 class Droplet(KubeObject):
 
-    def __init__(self, name, obj_api, opr_store, spec=None):
+    def __init__(self, name, obj_api, opr_store, network, spec=None):
         super().__init__(name, obj_api, opr_store, spec)
         self.kind = "Droplet"
         self.plural = "droplets"
         self.ip = ""
         self.mac = ""
         self.phy_itf = 'eth0'
+        self.network = network
+        self.name = name
         if spec is not None:
             self.set_obj_spec(spec)
 
@@ -48,10 +50,12 @@ class Droplet(KubeObject):
 
     def get_obj_spec(self):
         self.obj = {
+            "name": self.name,
             "mac": self.mac,
             "ip": self.ip,
             "status": self.status,
-            "itf": self.phy_itf
+            "itf": self.phy_itf,
+            "network": self.network
         }
 
         return self.obj
@@ -61,3 +65,4 @@ class Droplet(KubeObject):
         self.mac = get_spec_val('mac', spec)
         self.ip = get_spec_val('ip', spec)
         self.phy_itf = get_spec_val('itf', spec)
+        self.network = get_spec_val('network', spec)

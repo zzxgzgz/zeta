@@ -68,3 +68,13 @@ spec:
       priority: 0
       JSONPath: .spec.provisiondelay
       description: Time to provision an object from creation
+    - name: Network
+      type: string
+      priority: 0
+      JSONPath: .spec.network
+      description: A droplet's physical connectivity, can be either "tenant" or "zgc"
+    - name: Zgc_id
+      type: string
+      priority: 0
+      JSONPath: .spec.zgc_id
+      description: A droplet's physical connectivity, can be either "tenant" or "zgc"
