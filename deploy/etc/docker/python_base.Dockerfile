@@ -30,7 +30,7 @@ RUN pip3 install netaddr
 RUN pip3 install ipaddress
 RUN pip3 install pyroute2
 RUN pip3 install rpyc
-RUN pip3 install kubernetes==11.0.0
+RUN pip3 install kubernetes==12.0.0a1
 RUN pip3 install luigi==2.8.12
 RUN pip3 install grpcio
 RUN pip3 install protobuf

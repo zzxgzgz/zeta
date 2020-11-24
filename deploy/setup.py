@@ -10,7 +10,7 @@ setup(
         'netaddr',
         'ipaddress',
         'pyroute2',
-        'kubernetes==11.0.0',
+        'kubernetes==12.0.0a1',
         'luigi==2.8.12',
         'grpcio',
         'protobuf',

@@ -77,4 +77,4 @@ spec:
       type: string
       priority: 0
       JSONPath: .spec.zgc_id
-      description: A droplet's physical connectivity, can be either "tenant" or "zgc"
+      description: ZGC id

@@ -74,8 +74,8 @@ if [[ "$K8S_TYPE" == "kind" ]]; then
         metadata:
             name: $droplet
         spec:
-            mac: $mac
-            ip: $ip
+            mac: $mac,$mac,$mac,$mac
+            ip: $ip,$ip,$ip,$ip
             itf: $ITF
             status: Init
 EOF
