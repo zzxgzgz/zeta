@@ -35,6 +35,7 @@ from workflows.droplets.provisioned import *
 @kopf.on.update(group, version, RESOURCES.droplets, when=LAMBDAS.status_init, retries=OBJ_DEFAULTS.kopf_max_retries)
 @kopf.on.create(group, version, RESOURCES.droplets, when=LAMBDAS.status_init, retries=OBJ_DEFAULTS.kopf_max_retries)
 def droplet_opr_on_droplet_init(body, spec, **kwargs):
+    logger.info('Called droplet operator on droplet INIT: \nbody: {}\nspec:{}\n'.format(body, spec))
     param = HandlerParam()
     param.name = kwargs['name']
     param.body = body
@@ -47,6 +48,7 @@ def droplet_opr_on_droplet_init(body, spec, **kwargs):
 @kopf.on.update(group, version, RESOURCES.droplets, when=LAMBDAS.status_provisioned, retries=OBJ_DEFAULTS.kopf_max_retries)
 @kopf.on.create(group, version, RESOURCES.droplets, when=LAMBDAS.status_provisioned, retries=OBJ_DEFAULTS.kopf_max_retries)
 def droplet_opr_on_droplet_provisioned(body, spec, **kwargs):
+    logger.info('Called droplet operator on droplet PROVISIONED: \nbody: {}\nspec:{}\n'.format(body, spec))
     param = HandlerParam()
     param.name = kwargs['name']
     param.body = body
@@ -57,6 +59,7 @@ def droplet_opr_on_droplet_provisioned(body, spec, **kwargs):
 
 @kopf.on.delete(group, version, RESOURCES.droplets, retries=OBJ_DEFAULTS.kopf_max_retries)
 def droplet_opr_on_droplet_delete(body, spec, **kwargs):
+    logger.info('Called droplet operator on droplet DELETE: \nbody: {}\nspec:{}\n'.format(body, spec))
     param = HandlerParam()
     param.name = kwargs['name']
     param.body = body
