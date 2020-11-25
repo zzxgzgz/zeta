@@ -32,17 +32,19 @@ logger = logging.getLogger()
 
 class Droplet(KubeObject):
 
-    def __init__(self, name, obj_api, opr_store, network, spec=None):
+    def __init__(self, name, obj_api, opr_store, spec=None):
+        logger.info("Droplet init: \n name: {}, \napi: {}, \nstore: {}, \nspec: {}".format(name, obj_api, opr_store, spec))
         super().__init__(name, obj_api, opr_store, spec)
         self.kind = "Droplet"
         self.plural = "droplets"
-        self.ip = ""
-        self.mac = ""
+        self.ip = []
+        self.mac = []
+        self.zgc_id = ''
         self.phy_itf = 'eth0'
-        self.network = network
         self.name = name
         if spec is not None:
             self.set_obj_spec(spec)
+        logger.info("Droplet init ended, with created droplet: {}".format(self))
 
     @property
     def rpc(self):
@@ -55,7 +57,8 @@ class Droplet(KubeObject):
             "ip": self.ip,
             "status": self.status,
             "itf": self.phy_itf,
-            "network": self.network
+            "network": self.network,
+            "zgc_id": self.zgc_id
         }
 
         return self.obj
@@ -66,3 +69,4 @@ class Droplet(KubeObject):
         self.ip = get_spec_val('ip', spec)
         self.phy_itf = get_spec_val('itf', spec)
         self.network = get_spec_val('network', spec)
+        self.zgc_id = get_spec_val('zgc_id', spec)

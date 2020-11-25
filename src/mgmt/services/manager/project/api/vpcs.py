@@ -31,7 +31,7 @@ def int_to_mac(macint):
 def getGWsFromIpRange(firstIp,lastIp):
     start= reduce(lambda a,b: a<<8 | b, map(int, firstIp.split(".")))
     end = reduce(lambda a,b: a<<8 | b, map(int, lastIp.split(".")))
-    gws = {}
+    gws = []
     for ipint in range(start,end+1):
         gw = {}
         gw["ip"] = ".".join(map(lambda n: str(ipint>>n & 0xFF), [24,16,8,0]))

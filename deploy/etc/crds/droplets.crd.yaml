@@ -43,16 +43,16 @@ spec:
       priority: 0
       JSONPath: .spec.status
       description: The Current Status of the droplet
-    - name: Mac
-      type: string
-      priority: 0
-      JSONPath: .spec.mac
-      description: The mac address of the endpoint
-    - name: Ip
-      type: string
-      priority: 0
-      JSONPath: .spec.ip
-      description: The IP of the endpoint
+    # - name: Mac
+    #   type: string
+    #   priority: 0
+    #   JSONPath: .spec.mac
+    #   description: The mac address list of the endpoint
+    # - name: Ip
+    #   type: string
+    #   priority: 0
+    #   JSONPath: .spec.ip
+    #   description: The IP list of the endpoint
     - name: Interface
       type: string
       priority: 0
@@ -78,3 +78,33 @@ spec:
       priority: 0
       JSONPath: .spec.zgc_id
       description: ZGC id
+  validation:
+    openAPIV3Schema:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            status:
+              type: string
+            mac:
+              type: array
+              items: string
+            ip:
+              type: array
+              items: string
+            interface:
+              type: string
+            createTime:
+              type: string
+            provisionDelay:
+              type: string
+            network:
+              type: string
+            zgc_id:
+              type: string

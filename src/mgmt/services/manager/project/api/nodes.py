@@ -20,35 +20,23 @@ from project import db
 from .models import Zgc
 from kubernetes import client, config
 import json
-from .vpcs import getGWsFromIpRange
+from .vpcs import getGWsFromIpRange, MAC_PRIVATE, int_to_mac
 
 logger = logging.getLogger()
 config.load_incluster_config()
 obj_api = client.CustomObjectsApi()
-MAC_PRIVATE = 0x828300000000
 
-# from .....operator.common.constants import KIND
 from .vpcs import getGWsFromIpRange
 logger = logging.getLogger()
 config.load_incluster_config()
 obj_api = client.CustomObjectsApi()
-# existing_droplet_operator = DropletOperator()
 
-# existing_fwd_operator = FwdOperator()
-
-# existing_dft_operator = DftOperator()
 nodes_blueprint = Blueprint('nodes', __name__)
 
 def printlog(string):
     print(string)
     logger.info(string)
 
-
-# Convert to GW array
-def int_to_mac(macint):
-    return ':'.join(['{}{}'.format(a, b)
-                     for a, b
-                     in zip(*[iter('{:012x}'.format(macint))]*2)])
 
 def get_mac_from_ip(ip_string):
     start= reduce(lambda a,b: a<<8 | b, map(int, ip_string.split('.')))
@@ -75,11 +63,14 @@ def update_droplet(droplet):
 
 def delete_droplet(name):
     try:
-        obj_api.delete_namespaced_custom_object(group='zeta.com',
+        delete_response = obj_api.delete_namespaced_custom_object(group='zeta.com',
                                                 version='v1',
                                                 namespace='default',
                                                 plural='droplets', 
-                                                name=name)
+                                                name=name,
+                                                body=client.V1DeleteOptions(),
+                                                propagation_policy="Orphan")
+        printlog("Response for delete droplet {}: \n{}".format(name, delete_response))
     except ApiException as e:
         printlog('Exception when deleting droplet: {}\n{}'.format(name, e))
 
@@ -88,13 +79,16 @@ def create_droplet(name, ip, mac, itf, network, zgc_id):
     droplet_body = dict()
     meta_data = dict()
     meta_data['name'] = name
+    meta_data['labels'] = dict()
+    meta_data['labels']['zgc_id'] = zgc_id
+    meta_data['labels']['network'] = network
     spec = dict()
-    spec['ip'] = ','.join(ip)
-    spec['mac'] = ','.join(mac)
+    spec['ip'] = ip
+    spec['mac'] = mac
     spec['status'] = 'Init'
     spec['itf'] = itf
     spec['network'] = network
-    spec['zgc_ip'] = zgc_id
+    spec['zgc_id'] = zgc_id
     droplet_body['metadata'] = meta_data
     droplet_body['spec'] = spec
     droplet_body['apiVersion'] = 'zeta.com/v1'
@@ -105,7 +99,8 @@ def create_droplet(name, ip, mac, itf, network, zgc_id):
         obj_api.create_namespaced_custom_object(group='zeta.com',
                                                 version='v1',
                                                 namespace='default',
-                                                plural='droplets', body=droplet_body)
+                                                plural='droplets', 
+                                                body=droplet_body)
         # obj_api.create_cluster_custom_object(group='zeta.com',
         #                                         version='v1',
         #                                         plural='droplets', body=json.dumps(droplet_body))
@@ -121,31 +116,32 @@ def all_nodes():
 
         response_object = post_data
         
-        # Try to get the existing fwds
-
-
+        # Try to get the existing droplets        
         all_droplets_in_zgc = obj_api.list_cluster_custom_object(group='zeta.com',
-            version='v1',
-            plural='droplets'
-        )
+                                                                 version='v1',
+                                                                 plural='droplets',
+                                                                 label_selector='zgc_id='+post_data['zgc_id']+',network=tenant'
+                                                                )['items']
+        zgc_ip_list = post_data['ip_control'].split('.')
+        zgc_ip_list[0] = '10'
+        zgc_ip_list[1] = '0'
+        zgc_ip = '.'.join(zgc_ip_list)
+        zgc_mac = post_data['mac_zgc']
 
-        # printlog('Existing droplets: {}'.format(all_droplets_in_zgc))
-        
-        all_droplets = all_droplets_in_zgc['items']
-
-        if len(all_droplets)>0:
+        printlog('Existing droplets: {}'.format(all_droplets_in_zgc))
+        if len(all_droplets_in_zgc)>0:
             total_ip = 0
             droplet_that_can_give_ip_mac = []
-            for droplet in all_droplets:
-                # printlog(droplet)
-                # printlog(type(droplet))
+            for droplet in all_droplets_in_zgc:
+                printlog(droplet)
+                printlog(type(droplet))
                 droplet_spec = droplet['spec']
-                droplet_ip_list = droplet_spec['ip'].replace(' ','').split(',')
-                droplet_mac_list = droplet_spec['mac'].replace(' ','').split(',')
+                droplet_ip_list = droplet_spec['ip']
+                droplet_mac_list = droplet_spec['mac']
                 total_ip = total_ip + len(droplet_ip_list)
                 if len(droplet_ip_list) > 1 and len(droplet_mac_list) > 1:
                     droplet_that_can_give_ip_mac.append(droplet)
-            number_of_droplets = len(all_droplets)
+            number_of_droplets = len(all_droplets_in_zgc)
             number_of_ip_new_droplet_gets = total_ip // (number_of_droplets + 1) 
             ip_for_new_droplet = []
             if number_of_ip_new_droplet_gets > 0 : # each droplet should have 1 or more ip, assign ip / mac from exiting droplets
@@ -154,17 +150,18 @@ def all_nodes():
                     # printlog('Now length of new ip list is: {}, and we need: {}'.format(len(ip_for_new_droplet), number_of_ip_new_droplet_gets))
                     for droplet in droplet_that_can_give_ip_mac:
                         droplet_spec = droplet['spec']
-                        droplet_ip_list = droplet_spec['ip'].replace(' ','').split(',')
+                        droplet_ip_list = droplet_spec['ip']
                         if len(droplet_ip_list) > 1:
                             popped_ip = droplet_ip_list.pop()
                             ip_for_new_droplet.append(popped_ip)
-                            droplet_mac_list = droplet_spec['mac'].replace(' ','').split(',')
-                            if get_mac_from_ip(popped_ip) in droplet_mac_list:
-                                droplet_mac_list.remove()
+                            droplet_mac_list = droplet_spec['mac']
+                            mac_from_ip =  get_mac_from_ip(popped_ip)
+                            if mac_from_ip in droplet_mac_list:
+                                droplet_mac_list.remove(mac_from_ip)
                             else:
                                 droplet_mac_list.pop()
-                            droplet['spec']['ip'] = ','.join(droplet_ip_list)
-                            droplet['spec']['mac'] = ','.join(droplet_mac_list)
+                            droplet['spec']['ip'] = droplet_ip_list
+                            droplet['spec']['mac'] = droplet_mac_list
                     if current_length_of_ip_list == len(ip_for_new_droplet):
                         printlog('Breaking the while loop as there is no new ip added')
                         break
@@ -187,8 +184,8 @@ def all_nodes():
                                zgc_id=post_data['zgc_id'])
 
                 create_droplet(name='droplet-' + 'zgc-' + post_data['name'].replace('_', "-").lower(), 
-                               ip=ip_for_new_droplet, 
-                               mac=macs_for_new_droplet,
+                               ip=[zgc_ip], 
+                               mac=[zgc_mac],
                                itf=post_data['inf_zgc'], 
                                network='zgc', 
                                zgc_id=post_data['zgc_id'])
@@ -196,9 +193,31 @@ def all_nodes():
                 printlog('Finished updating and adding droplets.')
             else:
                 printlog('Not enough ip to assign for the new droplet.')
+        else:
+            printlog("First nodes in the ZGC cluster, it gets all the IPs")
+            zgc = Zgc.query.filter_by(zgc_id=post_data['zgc_id']).first()
+            if zgc is not None:
+                printlog("ZGC found: \n{}".format(zgc))
+                printlog("ZGC type: {}".format(type(zgc)))
+                gws = getGWsFromIpRange(zgc.ip_start, zgc.ip_end)
+                printlog("IPs and MACs amount for the whole network: {}".format(len(gws)))
+                create_droplet(name='droplet-' +'tenant-' + post_data['name'].replace('_', "-").lower(), 
+                               ip=[gw['ip'] for gw in gws], 
+                               mac=[gw['mac'] for gw in gws],
+                               itf=post_data['inf_tenant'], 
+                               network='tenant', 
+                               zgc_id=post_data['zgc_id'])
+                create_droplet(name='droplet-' +'zgc-' + post_data['name'].replace('_', "-").lower(), 
+                               ip=[zgc_ip], 
+                               mac=[zgc_mac],
+                               itf=post_data['inf_zgc'], 
+                               network='zgc', 
+                               zgc_id=post_data['zgc_id'])
+            else:
+                printlog("There's no zgc in the database!")
         # commit change to data at last
-        # db.session.add(Node(**post_data))
-        # db.session.commit()
+        db.session.add(Node(**post_data))
+        db.session.commit()
     
     else:
         response_object = [node.to_json() for node in Node.query.all()]
@@ -216,9 +235,9 @@ def ping_nodes():
 
 @nodes_blueprint.route('/nodes/<node_id>', methods=['GET', 'PUT', 'DELETE'])
 def single_node(node_id):
-    # node = Node.query.filter_by(node_id=node_id).first()
+    node = Node.query.filter_by(node_id=node_id).first()
     if request.method == 'GET':
-        response_object = {}#node.to_json()
+        response_object = node.to_json()
     elif request.method == 'PUT':
         post_data = request.get_json()
         node.zgc_id = post_data.get('zgc_id')
@@ -229,17 +248,61 @@ def single_node(node_id):
         node.inf_tenant = post_data.get('inf_tenant')
         node.mac_tenant = post_data.get('mac_tenant')
         node.inf_zgc = post_data.get('inf_zgc')
-        # db.session.commit()
+        db.session.commit()
         response_object = node.to_json()
     elif request.method == 'DELETE':
         post_data = request.get_json()
-        node_name = post_data['name']
-        zgc_droplet_name = 'droplet-zgc-'+node_name.replace('_', "-").lower()
+        node_name = node.name
+        zgc_id = node.zgc_id
+        all_droplets_in_zgc = obj_api.list_cluster_custom_object(group='zeta.com',
+                                                                 version='v1',
+                                                                 plural='droplets',
+                                                                 label_selector='zgc_id='+zgc_id+',network=tenant'
+                                                                )['items']
+        droplet_to_remove = None
+
         tenant_droplet_name = 'droplet-tenant-'+node_name.replace('_', "-").lower()
-        delete_droplet(zgc_droplet_name)
+        zgc_droplet_name = 'droplet-zgc-'+node_name.replace('_', "-").lower()
+
+        for droplet in all_droplets_in_zgc:
+            if droplet['metadata']['name'] == tenant_droplet_name:
+                droplet_to_remove = droplet
+                all_droplets_in_zgc.remove(droplet)
+                break
+        
+        if droplet_to_remove is None:
+            printlog('Cannot find that droplet with name: {}, thus not deleting anything'.format(tenant_droplet_name))
+            return jsonify({})
+        else:
+            printlog('Found droplet to remove: {}, but first assign its IPs to other droplets\n IPs: {}'.format(tenant_droplet_name,droplet_to_remove['spec']['ip']))
+        
+            ip_to_assign = droplet_to_remove['spec']['ip']
+            
+            ip_amount = len(ip_to_assign)
+
+            number_of_droplets_to_assign = len(all_droplets_in_zgc)
+
+            modified_droplets = []
+            for index in range(ip_amount):
+                ip = ip_to_assign[index]
+                mac = get_mac_from_ip(ip)
+                all_droplets_in_zgc[index % number_of_droplets_to_assign]['spec']['ip'].append(ip)
+                all_droplets_in_zgc[index % number_of_droplets_to_assign]['spec']['mac'].append(mac)
+                if all_droplets_in_zgc[index % number_of_droplets_to_assign] not in modified_droplets: 
+                    modified_droplets.append(all_droplets_in_zgc[index % number_of_droplets_to_assign])
+
+            delete_droplet(name=tenant_droplet_name)
+            delete_droplet(name=zgc_droplet_name)
+
+            printlog('Droplets for node {} are removed, now update the droplets left'.format(node_name))
+
+            for droplet in modified_droplets:
+                update_droplet(droplet)
+            printlog('All droplets are updated successfully after the deletion of {}'.format(node_name))
+
         delete_droplet(tenant_droplet_name)
-        # db.session.delete(node)
-        # db.session.commit()
+        db.session.delete(node)
+        db.session.commit()
         response_object = {}
     return jsonify(response_object)
 

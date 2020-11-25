@@ -58,7 +58,10 @@ class DropletOperator(ObjectOperator):
         self.bootstrapped = True
 
     def get_stored_obj(self, name, spec):
-        return Droplet(name, self.obj_api, self.store, spec)
+        logger.info("droplet operator get_store_object: \nname: {}\nspec: {}".format(name, spec))
+        droplet_to_return = Droplet(name, self.obj_api, self.store, spec)
+        logger.info("droplet operator get_store_object with droplet created: {}".format(droplet_to_return))
+        return droplet_to_return
 
     def get_droplet_by_ip(self, ip):
         for d in self.store.store["Droplet"]:

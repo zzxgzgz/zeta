@@ -28,5 +28,9 @@ droplets_opr = DropletOperator()
 def droplet_create(task, droplet, name, body, spec):
     logger.info("Creating droplet {}!".format(name))
     if not droplet:
+        logger.info("Droplet is none, need to create one")
         droplet = droplets_opr.get_stored_obj(name, spec)
+    else:
+        logger.info("THere is already a droplet: {}".format(droplet))
+    logger.info("Droplet created: \n{}".format(droplet))
     return droplet

@@ -36,12 +36,15 @@ from workflows.droplets.provisioned import *
 @kopf.on.create(group, version, RESOURCES.droplets, when=LAMBDAS.status_init, retries=OBJ_DEFAULTS.kopf_max_retries)
 def droplet_opr_on_droplet_init(body, spec, **kwargs):
     logger.info('Called droplet operator on droplet INIT: \nbody: {}\nspec:{}\n'.format(body, spec))
+    logger.info('kwargs: ')
+    logger.info(kwargs)
     param = HandlerParam()
     param.name = kwargs['name']
     param.body = body
     param.spec = spec
     param.workflow_func = droplet_create
     run_workflow(wffactory().CommonCreate(param=param))
+    logger.info("Droplet INIT ended")
 
 
 @kopf.on.resume(group, version, RESOURCES.droplets, when=LAMBDAS.status_provisioned, retries=OBJ_DEFAULTS.kopf_max_retries)
@@ -49,20 +52,28 @@ def droplet_opr_on_droplet_init(body, spec, **kwargs):
 @kopf.on.create(group, version, RESOURCES.droplets, when=LAMBDAS.status_provisioned, retries=OBJ_DEFAULTS.kopf_max_retries)
 def droplet_opr_on_droplet_provisioned(body, spec, **kwargs):
     logger.info('Called droplet operator on droplet PROVISIONED: \nbody: {}\nspec:{}\n'.format(body, spec))
+    logger.info('kwargs: ')
+    logger.info(kwargs)
     param = HandlerParam()
     param.name = kwargs['name']
     param.body = body
     param.spec = spec
     param.workflow_func = droplet_provisioned
     run_workflow(wffactory().CommonProvisioned(param=param))
+    logger.info("Droplet PROVISIONED ended")
+
 
 
 @kopf.on.delete(group, version, RESOURCES.droplets, retries=OBJ_DEFAULTS.kopf_max_retries)
 def droplet_opr_on_droplet_delete(body, spec, **kwargs):
     logger.info('Called droplet operator on droplet DELETE: \nbody: {}\nspec:{}\n'.format(body, spec))
+    logger.info('kwargs: ')
+    logger.info(kwargs)
     param = HandlerParam()
-    param.name = kwargs['name']
+    param.name = spec['name']
     param.body = body
     param.spec = spec
     param.workflow_func = droplet_delete
     run_workflow(wffactory().CommonDelete(param=param))
+    logger.info("Droplet DELETE ended")
+
