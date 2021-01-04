@@ -99,6 +99,7 @@ def all_ports():
         end_time = time.time()
         logger.debug(f'Zeta took {end_time - start_time} seconds to make {amount_of_ports} ports')
         ports_update_eps_config()
+        status_code = 201
     else:
         response_object = [port.to_json() for port in Port.query.all()]
     return jsonify(response_object), status_code
